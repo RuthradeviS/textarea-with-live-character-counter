@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Textarea with Live Character Counter</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      padding: 32px;
+      background: #fafafa;
+      color: #111;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+
+    .max-note {
+      font-size: 0.95rem;
+      color: #444;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 140px;
+      padding: 12px;
+      font-size: 1rem;
+      border: 1px solid #d9d9d9;
+      border-radius: 8px;
+      resize: vertical;
+      box-sizing: border-box;
+      transition: border-color .12s;
+    }
+    textarea:focus {
+      outline: none;
+      border-color: #6b9cff;
+      box-shadow: 0 0 0 3px rgba(107,156,255,0.12);
+    }
+
+    .status {
+      margin-top: 8px;
+      display:flex;
+      gap:12px;
+      align-items:center;
+      justify-content:space-between;
+    }
+
+    .counter {
+      font-size: 0.95rem;
+      color: #333;
+    }
+
+    .remaining {
+      font-size: 0.9rem;
+      color: #666;
+    }
+
+    .warning {
+      color: #b00020;
+      font-size: 0.95rem;
+      font-weight: 600;
+      display: none;
+    }
+
+    /* when limit reached */
+    .limit-reached textarea {
+      border-color: #b00020;
+    }
+    .limit-reached .counter,
+    .limit-reached .remaining {
+      color: #b00020;
+    }
+    .show { display: inline-block; }
+  </style>
+</head>
+<body>
+  <div class="card" id="container">
+    <div class="meta">
+      <label for="message">Write your message</label>
+      <div class="max-note" id="maxNote">200 characters max</div>
+    </div>
+
+    <textarea id="message" placeholder="Type your message..." aria-describedby="counter remaining warning" ></textarea>
+
+    <div class="status" aria-live="polite">
+      <div>
+        <span class="counter" id="counter">0/200 characters</span>
+        <span class="remaining" id="remaining"> — 200 remaining</span>
+      </div>
+      <div class="warning" id="warning" role="alert">Character limit reached. Extra text was removed.</div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const textarea = document.getElementById('message');
+      const counter = document.getElementById('counter');
+      const remaining = document.getElementById('remaining');
+      const warning = document.getElementById('warning');
+      const container = document.getElementById('container');
+
+      const MAX_CHARS = 200;
+
+      // show the configured max in the UI
+      document.getElementById('maxNote').textContent = MAX_CHARS + ' characters max';
+      updateUi();
+
+      // Update on input (typing or paste)
+      textarea.addEventListener('input', onInput);
+
+      // Prevent some keystrokes if length already at max (helps UX on some platforms)
+      textarea.addEventListener('keydown', function (e) {
+        const value = textarea.value;
+        // Allow navigation keys and backspace/delete etc.
+        const ctrlOrMeta = e.ctrlKey || e.metaKey;
+        const allowedKeys = [
+          'Backspace','Delete','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End','Tab'
+        ];
+        if (value.length >= MAX_CHARS && !allowedKeys.includes(e.key) && !ctrlOrMeta) {
+          // block further input when at limit
+          e.preventDefault();
+          showWarning();
+        }
+      });
+
+      function onInput(e) {
+        let value = textarea.value || '';
+        const len = value.length;
+
+        // If user pasted or somehow exceeded limit, trim and show warning
+        if (len > MAX_CHARS) {
+          textarea.value = value.slice(0, MAX_CHARS);
+          showWarning();
+        } else {
+          hideWarning();
+        }
+
+        updateUi();
+      }
+
+      function updateUi() {
+        const len = (textarea.value || '').length;
+        counter.textContent = `${len}/${MAX_CHARS} characters`;
+
+        const left = MAX_CHARS - len;
+        remaining.textContent = ` — ${left} remaining`;
+
+        if (len >= MAX_CHARS) {
+          container.classList.add('limit-reached');
+        } else {
+          container.classList.remove('limit-reached');
+        }
+      }
+
+      // show warning for a short time, keep visible if user repeatedly tries to type
+      let warnTimer = null;
+      function showWarning() {
+        warning.classList.add('show');
+        // keep message visible and remove after 2.5s
+        if (warnTimer) clearTimeout(warnTimer);
+        warnTimer = setTimeout(hideWarning, 2500);
+      }
+
+      function hideWarning() {
+        warning.classList.remove('show');
+        if (warnTimer) { clearTimeout(warnTimer); warnTimer = null; }
+      }
+    })();
+  </script>
+</body>
+</html>
